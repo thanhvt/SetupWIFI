@@ -1,0 +1,3 @@
+PyQt6>=6.4.0
+pyobjc-framework-SystemConfiguration>=9.2
+pyobjc-framework-CoreWLAN>=9.2

@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Configuration files with sensitive data
+config.py
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
