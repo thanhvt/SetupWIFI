@@ -29,8 +29,8 @@ A simple macOS application that allows quick switching between two WiFi configur
    Note: sudo is required for network configuration changes
 
 3. Use the GUI buttons to switch between networks:
-   - Click "Switch to Rlos_mcas" for Rlos_mcas network
-   - Click "Switch to VSS" for VSS network
+   - Click "Switch to XXX" for XXX network
+   - Click "Switch to YYY" for YYY network
 
 ## Network Configurations
 
