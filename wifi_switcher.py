@@ -6,6 +6,7 @@ import os.path
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                             QPushButton, QTextEdit, QLabel, QMessageBox)
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QKeySequence, QShortcut
 import objc
 from Foundation import NSBundle
 
@@ -35,17 +36,25 @@ class WifiSwitcher(QMainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(10)
         
-        # Create Rlos_mcas button
-        self.rlos_btn = QPushButton('Switch to Rlos_mcas')
+        # Create RLOS button with shortcut
+        self.rlos_btn = QPushButton('Switch to RLOS (⌘⇧B)')
         self.rlos_btn.setMinimumHeight(50)
         self.rlos_btn.clicked.connect(self.switch_to_rlos)
         layout.addWidget(self.rlos_btn)
         
-        # Create VSS button
-        self.vss_btn = QPushButton('Switch to VSS')
+        # Add shortcut for Rlos button
+        rlos_shortcut = QShortcut(QKeySequence('Ctrl+Shift+B'), self)
+        rlos_shortcut.activated.connect(self.switch_to_rlos)
+        
+        # Create VSS button with shortcut
+        self.vss_btn = QPushButton('Switch to VSS (⌘⇧C)')
         self.vss_btn.setMinimumHeight(50)
         self.vss_btn.clicked.connect(self.switch_to_vss)
         layout.addWidget(self.vss_btn)
+        
+        # Add shortcut for VSS button
+        vss_shortcut = QShortcut(QKeySequence('Ctrl+Shift+C'), self)
+        vss_shortcut.activated.connect(self.switch_to_vss)
         
         # Create log section
         log_label = QLabel('Process Log:')
