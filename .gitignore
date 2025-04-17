@@ -10,3 +10,5 @@ config.py
 .DS_Store
 .AppleDouble
 .LSOverride
+# /build
+# /dist
