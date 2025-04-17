@@ -26,7 +26,7 @@ class WifiSwitcherBar(rumps.App):
             callback=self.switch_to_rlos
         )
         self.vss_item = rumps.MenuItem(
-            f"Switch to {NETWORKS['vss']['ssid']} (⌘⇧C)",
+            f"Switch to {NETWORKS['vss']['ssid']} (⌘⇧V)",
             callback=self.switch_to_vss
         )
         self.show_log = rumps.MenuItem("Show Log", callback=self.toggle_log)
@@ -37,8 +37,6 @@ class WifiSwitcherBar(rumps.App):
             self.vss_item,
             None,  # Separator
             self.show_log,
-            # None,  # Separator
-            # rumps.MenuItem("Quit", callback=self.quit_app)
         ]
         
         # Initialize log window
@@ -65,9 +63,9 @@ class WifiSwitcherBar(rumps.App):
                     self.switch_to_rlos()
                     time.sleep(0.3)  # Prevent multiple triggers
                 
-                # Check for C key
-                c_key = CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, 0x08)  # C
-                if c_key:
+                # Check for V key
+                v_key = CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, 0x09)  # V
+                if v_key:
                     self.switch_to_vss()
                     time.sleep(0.3)  # Prevent multiple triggers
         except Exception as e:
@@ -89,9 +87,9 @@ class WifiSwitcherBar(rumps.App):
     def toggle_log(self, _):
         if not self.log_window:
             self.log_window = rumps.Window(
-                message="\n".join(self.log_entries),
+                message="",  # Empty message
                 title="WiFi Switcher Log",
-                default_text="",
+                default_text="\n".join(self.log_entries),  # Put log entries in default_text
                 ok="Close",
                 dimensions=(400, 300)
             )
