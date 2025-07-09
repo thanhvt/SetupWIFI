@@ -2,9 +2,14 @@
 REM Script cài đặt WiFi Switcher cho Windows
 REM Chạy với quyền Administrator
 
+REM Chuyển working directory về thư mục chứa script
+cd /d "%~dp0"
+
 echo ========================================
 echo WiFi Switcher for Windows - Installer
 echo ========================================
+echo.
+echo Working directory: %CD%
 echo.
 
 REM Kiểm tra quyền Administrator
@@ -32,7 +37,18 @@ if %errorLevel% == 0 (
 )
 
 echo.
-echo Bước 2: Cài đặt dependencies...
+echo Bước 2: Kiểm tra file requirements...
+if exist requirements_windows.txt (
+    echo [OK] File requirements_windows.txt tồn tại
+) else (
+    echo [ERROR] File requirements_windows.txt không tồn tại!
+    echo Vui lòng đảm bảo chạy script từ thư mục chứa project
+    pause
+    exit /b 1
+)
+
+echo.
+echo Bước 3: Cài đặt dependencies...
 pip install -r requirements_windows.txt
 if %errorLevel% == 0 (
     echo [OK] Dependencies đã được cài đặt
@@ -43,7 +59,7 @@ if %errorLevel% == 0 (
 )
 
 echo.
-echo Bước 3: Kiểm tra file config...
+echo Bước 4: Kiểm tra file config...
 if exist config.py (
     echo [OK] File config.py đã tồn tại
 ) else (
@@ -53,7 +69,7 @@ if exist config.py (
 )
 
 echo.
-echo Bước 4: Test ứng dụng...
+echo Bước 5: Test ứng dụng...
 echo Đang test Windows Network Manager...
 python -c "from windows_network_manager import WindowsNetworkManager; nm = WindowsNetworkManager(); print('Network Manager OK')"
 if %errorLevel% == 0 (

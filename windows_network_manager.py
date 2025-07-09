@@ -89,36 +89,61 @@ class WindowsNetworkManager:
     def _get_wifi_interface(self) -> Optional[str]:
         """
         Lấy tên interface WiFi chính
-        
+
         Mục đích: Tìm interface WiFi để sử dụng cho các lệnh netsh
         Tham số đầu vào: Không có
         Tham số đầu ra: Tên interface WiFi (str) hoặc None nếu không tìm thấy
         Khi nào gọi: Khi khởi tạo WindowsNetworkManager
         """
+        # Method 1: Thử netsh wlan show interfaces
         success, output, _ = self._run_command(['netsh', 'wlan', 'show', 'interfaces'])
-        
-        if not success:
-            return None
-        
-        # Tìm interface đang hoạt động
-        for line in output.split('\n'):
-            if 'Name' in line and 'Wi-Fi' in line:
-                # Extract interface name
-                match = re.search(r':\s*(.+)', line)
-                if match:
-                    interface_name = match.group(1).strip()
-                    self._log(f"Tìm thấy WiFi interface: {interface_name}")
-                    return interface_name
-        
-        # Fallback - thử tìm interface bất kỳ
-        for line in output.split('\n'):
-            if 'Name' in line:
-                match = re.search(r':\s*(.+)', line)
-                if match:
-                    interface_name = match.group(1).strip()
-                    self._log(f"Sử dụng interface: {interface_name}")
-                    return interface_name
-        
+        if success and output.strip():
+            # Tìm interface từ wlan command
+            for line in output.split('\n'):
+                if 'Name' in line:
+                    match = re.search(r':\s*(.+)', line)
+                    if match:
+                        interface_name = match.group(1).strip()
+                        self._log(f"Tìm thấy WiFi interface từ wlan: {interface_name}")
+                        return interface_name
+
+        # Method 2: Tìm từ danh sách tất cả interfaces
+        success, output, _ = self._run_command(['netsh', 'interface', 'show', 'interface'])
+        if success:
+            # Tìm interface có tên chứa Wi-Fi và đang Connected
+            for line in output.split('\n'):
+                if 'Connected' in line and 'Wi-Fi' in line:
+                    # Extract interface name (cột cuối cùng)
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        interface_name = ' '.join(parts[3:])  # Lấy tên interface
+                        self._log(f"Tìm thấy WiFi interface đang kết nối: {interface_name}")
+                        return interface_name
+
+            # Fallback: Tìm interface có tên chứa Wi-Fi (dù không connected)
+            for line in output.split('\n'):
+                if 'Wi-Fi' in line and ('Enabled' in line or 'Disabled' in line):
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        interface_name = ' '.join(parts[3:])
+                        self._log(f"Tìm thấy WiFi interface: {interface_name}")
+                        return interface_name
+
+        # Method 3: Test các tên interface phổ biến
+        common_wifi_names = [
+            "Wi-Fi", "Wi-Fi 2", "Wi-Fi 3", "WiFi", "WLAN",
+            "Wireless Network Connection", "Wireless"
+        ]
+
+        for name in common_wifi_names:
+            # Test xem interface có tồn tại không
+            success, output, _ = self._run_command([
+                'netsh', 'interface', 'ip', 'show', 'config', f'name={name}'
+            ])
+            if success and 'Configuration for interface' in output:
+                self._log(f"Tìm thấy WiFi interface qua test: {name}")
+                return name
+
         self._log("Không tìm thấy WiFi interface")
         return None
     
