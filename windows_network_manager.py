@@ -469,3 +469,62 @@ class WindowsNetworkManager:
             return connection_info
 
         return None
+
+    def get_detailed_network_info(self) -> Optional[Dict]:
+        """
+        Lấy thông tin mạng chi tiết bao gồm IP, DHCP status
+
+        Mục đích: Lấy thông tin đầy đủ về kết nối mạng hiện tại
+        Tham số đầu vào: Không có
+        Tham số đầu ra: Dict với thông tin chi tiết hoặc None nếu không kết nối
+        Khi nào gọi: Để hiển thị trạng thái mạng trong UI
+        """
+        # Lấy thông tin WiFi connection trước
+        wifi_info = self.get_current_connection()
+        if not wifi_info:
+            return None
+
+        # Lấy thông tin IP nếu có WiFi interface
+        if not self.wifi_interface:
+            return wifi_info
+
+        success, output, _ = self._run_command([
+            'netsh', 'interface', 'ip', 'show', 'config', f'name={self.wifi_interface}'
+        ])
+
+        if not success:
+            return wifi_info
+
+        # Parse thông tin IP
+        ip_info = {}
+        lines = output.split('\n')
+
+        for line in lines:
+            line = line.strip()
+            if 'DHCP enabled' in line:
+                match = re.search(r':\s*(.+)', line)
+                if match:
+                    dhcp_status = match.group(1).strip().lower()
+                    ip_info['connection_type'] = 'DHCP' if dhcp_status == 'yes' else 'Static'
+            elif 'IP Address' in line and 'Subnet' not in line:
+                match = re.search(r':\s*(.+)', line)
+                if match:
+                    ip_info['ip_address'] = match.group(1).strip()
+            elif 'Default Gateway' in line:
+                match = re.search(r':\s*(.+)', line)
+                if match:
+                    gateway = match.group(1).strip()
+                    if gateway and gateway != '':
+                        ip_info['gateway'] = gateway
+
+        # Kết hợp thông tin WiFi và IP
+        detailed_info = {
+            'ssid': wifi_info.get('ssid', 'Unknown'),
+            'state': wifi_info.get('state', 'unknown'),
+            'ip_address': ip_info.get('ip_address', 'N/A'),
+            'connection_type': ip_info.get('connection_type', 'Unknown'),
+            'gateway': ip_info.get('gateway', 'N/A'),
+            'interface': self.wifi_interface or 'N/A'
+        }
+
+        return detailed_info

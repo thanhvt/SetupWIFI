@@ -9,8 +9,8 @@ import time
 import os.path
 import ctypes
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
-                            QPushButton, QTextEdit, QLabel, QMessageBox)
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
+                            QPushButton, QTextEdit, QLabel, QMessageBox, QFrame)
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt6.QtGui import QKeySequence, QShortcut, QIcon
 
 # Import Windows network manager
@@ -129,7 +129,12 @@ class WifiSwitcherWindows(QMainWindow):
         # Khởi tạo network manager
         self.network_manager = WindowsNetworkManager()
         self.current_thread = None
-        
+
+        # Khởi tạo timer để cập nhật thông tin mạng
+        self.network_info_timer = QTimer()
+        self.network_info_timer.timeout.connect(self.update_network_info)
+        self.network_info_timer.start(7000)  # Cập nhật mỗi 7 giây
+
         self.initUI()
     
     def is_admin(self) -> bool:
@@ -157,7 +162,7 @@ class WifiSwitcherWindows(QMainWindow):
         """
         # Thiết lập thuộc tính cửa sổ
         self.setWindowTitle('WiFi Switcher for Windows v1.0')
-        self.setMinimumSize(600, 700)
+        self.setMinimumSize(600, 900)
         
         # Tạo central widget và layout
         central_widget = QWidget()
@@ -171,6 +176,9 @@ class WifiSwitcherWindows(QMainWindow):
         title_label.setStyleSheet('font-size: 18px; font-weight: bold; color: #2c3e50; margin-bottom: 10px;')
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title_label)
+
+        # Section hiển thị trạng thái mạng hiện tại
+        self.create_network_status_section(layout)
         
         # Nút RLOS với shortcut
         self.rlos_btn = QPushButton(f'Chuyển sang {NETWORKS["rlos"]["ssid"]} (Ctrl+Shift+R)')
@@ -223,6 +231,9 @@ class WifiSwitcherWindows(QMainWindow):
         # Log khởi tạo
         self.add_log("WiFi Switcher for Windows đã khởi động")
         self.add_log(f"WiFi Interface: {self.network_manager.wifi_interface or 'Không tìm thấy'}")
+
+        # Cập nhật thông tin mạng lần đầu
+        self.update_network_info()
     
     def setup_button_styles(self):
         """
@@ -260,6 +271,59 @@ class WifiSwitcherWindows(QMainWindow):
         
         self.rlos_btn.setStyleSheet(button_style)
         self.vss_btn.setStyleSheet(button_style)
+
+    def create_network_status_section(self, layout):
+        """
+        Tạo section hiển thị trạng thái mạng hiện tại
+
+        Mục đích: Hiển thị thông tin mạng WiFi đang kết nối
+        Tham số đầu vào: layout (QVBoxLayout) - layout chính
+        Tham số đầu ra: Không có
+        Khi nào gọi: Trong initUI() để tạo giao diện
+        """
+        # Frame chứa thông tin mạng
+        network_frame = QFrame()
+        network_frame.setFrameStyle(QFrame.Shape.Box)
+        network_frame.setStyleSheet('''
+            QFrame {
+                background-color: #f8f9fa;
+                border: 2px solid #dee2e6;
+                border-radius: 8px;
+                padding: 10px;
+                margin: 10px 0px;
+            }
+        ''')
+
+        # Layout cho network frame
+        network_layout = QVBoxLayout(network_frame)
+        network_layout.setContentsMargins(15, 10, 15, 10)
+        network_layout.setSpacing(5)
+
+        # Label tiêu đề
+        status_title = QLabel('📡 Trạng thái mạng hiện tại')
+        status_title.setStyleSheet('''
+            font-size: 14px;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 5px;
+        ''')
+        network_layout.addWidget(status_title)
+
+        # Label hiển thị thông tin mạng
+        self.network_status_label = QLabel('Đang kiểm tra kết nối...')
+        self.network_status_label.setStyleSheet('''
+            font-size: 12px;
+            color: #6c757d;
+            padding: 5px;
+            background-color: white;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        ''')
+        self.network_status_label.setWordWrap(True)
+        network_layout.addWidget(self.network_status_label)
+
+        # Thêm frame vào layout chính
+        layout.addWidget(network_frame)
     
     def add_log(self, message: str):
         """
@@ -276,6 +340,73 @@ class WifiSwitcherWindows(QMainWindow):
         # Auto scroll to bottom
         scrollbar = self.log_text.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
+
+    def update_network_info(self):
+        """
+        Cập nhật thông tin mạng hiện tại
+
+        Mục đích: Lấy và hiển thị thông tin mạng WiFi hiện tại
+        Tham số đầu vào: Không có
+        Tham số đầu ra: Không có
+        Khi nào gọi: Tự động mỗi 7 giây hoặc sau khi chuyển đổi mạng
+        """
+        try:
+            # Lấy thông tin mạng chi tiết
+            network_info = self.network_manager.get_detailed_network_info()
+
+            if network_info and network_info.get('state') == 'connected':
+                # Có kết nối WiFi
+                ssid = network_info.get('ssid', 'Unknown')
+                ip = network_info.get('ip_address', 'N/A')
+                conn_type = network_info.get('connection_type', 'Unknown')
+
+                # Tạo text hiển thị
+                status_text = f"🟢 Đã kết nối\n"
+                status_text += f"Mạng: {ssid}\n"
+                status_text += f"IP: {ip}\n"
+                status_text += f"Loại: {conn_type}"
+
+                # Style cho trạng thái connected
+                self.network_status_label.setStyleSheet('''
+                    font-size: 12px;
+                    color: #155724;
+                    background-color: #d4edda;
+                    border: 1px solid #c3e6cb;
+                    border-radius: 4px;
+                    padding: 8px;
+                    font-weight: bold;
+                ''')
+
+            else:
+                # Không có kết nối WiFi
+                status_text = "🔴 Không có kết nối WiFi"
+
+                # Style cho trạng thái disconnected
+                self.network_status_label.setStyleSheet('''
+                    font-size: 12px;
+                    color: #721c24;
+                    background-color: #f8d7da;
+                    border: 1px solid #f5c6cb;
+                    border-radius: 4px;
+                    padding: 8px;
+                    font-weight: bold;
+                ''')
+
+            # Cập nhật label
+            self.network_status_label.setText(status_text)
+
+        except Exception as e:
+            # Lỗi khi lấy thông tin
+            error_text = f"⚠️ Lỗi lấy thông tin mạng: {str(e)}"
+            self.network_status_label.setText(error_text)
+            self.network_status_label.setStyleSheet('''
+                font-size: 12px;
+                color: #856404;
+                background-color: #fff3cd;
+                border: 1px solid #ffeaa7;
+                border-radius: 4px;
+                padding: 8px;
+            ''')
 
     def set_buttons_enabled(self, enabled: bool):
         """
@@ -347,6 +478,10 @@ class WifiSwitcherWindows(QMainWindow):
         if success:
             self.add_log(f"✅ {message}")
             QMessageBox.information(self, "Thành công", message)
+
+            # Cập nhật thông tin mạng ngay lập tức sau khi chuyển đổi thành công
+            QTimer.singleShot(2000, self.update_network_info)  # Delay 2 giây để mạng ổn định
+
         else:
             self.add_log(f"❌ {message}")
             QMessageBox.warning(self, "Lỗi", message)

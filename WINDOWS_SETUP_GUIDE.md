@@ -62,9 +62,11 @@ python wifi_switcher_windows.py
 
 **Tính năng:**
 - Giao diện đồ họa thân thiện
+- **Hiển thị trạng thái mạng real-time** (SSID, IP, DHCP/Static)
 - Hiển thị log chi tiết
 - Keyboard shortcuts: Ctrl+Shift+R (RLOS), Ctrl+Shift+V (VSS)
 - Thông báo kết quả
+- Tự động cập nhật thông tin mạng mỗi 7 giây
 
 ### Ứng dụng System Tray
 
@@ -77,6 +79,32 @@ python system_tray_app.py
 - Truy cập nhanh qua context menu
 - Hiển thị trạng thái mạng
 - Xem log hoạt động
+
+## Tính năng mới: Real-time Network Status Display
+
+### 📡 Hiển thị trạng thái mạng real-time
+
+**Tính năng mới trong phiên bản Windows:**
+
+- **Vị trí:** Section "Trạng thái mạng hiện tại" ở phía trên các nút chuyển đổi
+- **Thông tin hiển thị:**
+  - 🌐 Tên mạng WiFi đang kết nối (SSID)
+  - 🔗 Địa chỉ IP hiện tại
+  - ⚙️ Loại kết nối (DHCP hoặc Static)
+  - 📶 Trạng thái kết nối (Connected/Disconnected)
+
+**Cập nhật tự động:**
+- ⏱️ Tự động refresh mỗi 7 giây
+- 🔄 Cập nhật ngay sau khi chuyển đổi mạng thành công
+- 🎨 Màu sắc trực quan: Xanh (connected), Đỏ (disconnected), Vàng (error)
+
+**Ví dụ hiển thị:**
+```
+🟢 Đã kết nối
+Mạng: VCB-Wifi-User-Internet
+IP: 172.29.15.73
+Loại: DHCP
+```
 
 ## Kiểm tra và Test
 
