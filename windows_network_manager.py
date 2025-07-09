@@ -11,6 +11,13 @@ import re
 import json
 from typing import Dict, List, Optional, Tuple
 
+# Import alternative connector
+try:
+    from alternative_wifi_connector import AlternativeWiFiConnector
+    ALTERNATIVE_AVAILABLE = True
+except ImportError:
+    ALTERNATIVE_AVAILABLE = False
+
 
 class WindowsNetworkManager:
     """
@@ -26,17 +33,27 @@ class WindowsNetworkManager:
         """Khởi tạo Windows Network Manager"""
         self.log_callback = None  # Khởi tạo log_callback trước
         self.wifi_interface = self._get_wifi_interface()
+
+        # Khởi tạo alternative connector nếu có
+        self.alternative_connector = None
+        if ALTERNATIVE_AVAILABLE:
+            self.alternative_connector = AlternativeWiFiConnector()
+            self._log("✅ Alternative WiFi Connector đã sẵn sàng")
     
     def set_log_callback(self, callback):
         """
         Thiết lập callback function để ghi log
-        
+
         Mục đích: Cho phép ghi log từ bên ngoài
         Tham số đầu vào: callback function nhận string message
         Tham số đầu ra: Không có
         Khi nào gọi: Sau khi khởi tạo WindowsNetworkManager
         """
         self.log_callback = callback
+
+        # Cũng set cho alternative connector
+        if self.alternative_connector:
+            self.alternative_connector.set_log_callback(callback)
     
     def _log(self, message: str):
         """
@@ -201,27 +218,61 @@ class WindowsNetworkManager:
             # Tạo profile mới nếu chưa tồn tại
             if not self._create_wifi_profile(ssid, password):
                 return False
-
-        # Kết nối đến mạng
-        if self.wifi_interface:
-            success, _, stderr = self._run_command([
-                'netsh', 'wlan', 'connect',
-                f'name={ssid}',
-                f'interface={self.wifi_interface}'
-            ])
-        else:
-            success, _, stderr = self._run_command([
-                'netsh', 'wlan', 'connect', f'name={ssid}'
-            ])
-
-        if success:
-            self._log(f"Kết nối thành công đến {ssid}")
-            # Đợi kết nối ổn định
-            time.sleep(3)
-            return True
-        else:
-            self._log(f"Lỗi kết nối: {stderr}")
+        elif not profile_exists:
+            self._log(f"Profile {ssid} không tồn tại và không có password để tạo mới")
             return False
+
+        # Thử nhiều cách kết nối
+        connection_methods = [
+            # Method 1: Chỉ tên (đơn giản nhất)
+            ['netsh', 'wlan', 'connect', f'name={ssid}'],
+            # Method 2: Với interface (nếu có)
+            ['netsh', 'wlan', 'connect', f'name={ssid}', f'interface={self.wifi_interface}'] if self.wifi_interface else None,
+            # Method 3: Với SSID parameter
+            ['netsh', 'wlan', 'connect', f'ssid={ssid}', f'name={ssid}'],
+        ]
+
+        # Loại bỏ None methods
+        connection_methods = [method for method in connection_methods if method is not None]
+
+        for i, method in enumerate(connection_methods, 1):
+            self._log(f"Thử phương pháp kết nối {i}: {' '.join(method)}")
+            success, stdout, stderr = self._run_command(method)
+
+            if success:
+                self._log(f"Kết nối thành công đến {ssid} bằng phương pháp {i}")
+                # Đợi kết nối ổn định
+                time.sleep(3)
+                return True
+            else:
+                # Kiểm tra các lỗi cụ thể
+                if "location permission" in stderr.lower() or "location permission" in stdout.lower():
+                    self._log("⚠️ Lỗi Location Permission - cần bật Location Services")
+                    self._log("Hướng dẫn: Settings > Privacy & security > Location > Bật Location services")
+                elif "elevation" in stderr.lower() or "elevation" in stdout.lower():
+                    self._log("⚠️ Lỗi quyền - cần chạy với quyền Administrator")
+                elif "not found" in stderr.lower() or "not found" in stdout.lower():
+                    self._log(f"⚠️ Không tìm thấy mạng {ssid} - kiểm tra mạng có trong tầm phủ sóng")
+                else:
+                    self._log(f"Phương pháp {i} thất bại: {stderr or stdout}")
+
+        # Nếu tất cả phương pháp netsh đều thất bại, thử alternative connector
+        if self.alternative_connector and password:
+            self._log("🔄 Thử Alternative WiFi Connector...")
+            if self.alternative_connector.connect_wifi(ssid, password):
+                self._log(f"✅ Kết nối thành công qua Alternative Connector: {ssid}")
+                return True
+
+        # Nếu tất cả phương pháp đều thất bại
+        self._log(f"❌ Tất cả phương pháp kết nối đều thất bại cho mạng {ssid}")
+        self._log("💡 Gợi ý khắc phục:")
+        self._log("1. Bật Location Services: Settings > Privacy & security > Location")
+        self._log("2. Chạy ứng dụng với quyền Administrator")
+        self._log("3. Kiểm tra mạng WiFi có trong tầm phủ sóng")
+        self._log("4. Thử kết nối thủ công qua Windows Settings trước")
+        self._log("5. Chạy: python check_and_fix_wifi.py để tự động fix")
+
+        return False
 
     def _create_wifi_profile(self, ssid: str, password: str) -> bool:
         """

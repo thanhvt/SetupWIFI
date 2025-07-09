@@ -111,12 +111,27 @@ Test này sẽ kiểm tra:
 
 ## Xử lý sự cố
 
+### 🔧 Script tự động khắc phục
+
+**Chạy script tự động để kiểm tra và fix các vấn đề:**
+
+```bash
+# Kiểm tra và fix tự động
+python check_and_fix_wifi.py
+
+# Test toàn diện hệ thống
+python test_complete_wifi_solution.py
+
+# Debug chi tiết
+python debug_wifi_connection.py
+```
+
 ### Lỗi "Access Denied"
 
 **Nguyên nhân:** Không có quyền Administrator
 
 **Giải pháp:**
-1. Click chuột phải vào Command Prompt
+1. Click chuột phải vào Command Prompt/PowerShell
 2. Chọn "Run as administrator"
 3. Chạy lại ứng dụng
 
@@ -128,17 +143,37 @@ Test này sẽ kiểm tra:
 1. Kiểm tra WiFi adapter trong Device Manager
 2. Bật WiFi adapter nếu bị tắt
 3. Cập nhật driver WiFi
+4. Chạy: `python debug_wifi_interface.py`
+
+### Lỗi "Location Permission"
+
+**Nguyên nhân:** Windows cần Location Services để truy cập WiFi
+
+**Giải pháp:**
+1. Mở Settings (Windows + I)
+2. Đi tới Privacy & security > Location
+3. Bật "Location services"
+4. Bật "Let apps access your location"
+5. Hoặc chạy: `fix_location_services.bat`
 
 ### Lỗi kết nối WiFi
 
-**Nguyên nhân:** Thông tin mạng không chính xác
+**Nguyên nhân:** Nhiều nguyên nhân có thể
 
-**Giải pháp:**
+**Giải pháp tự động:**
+```bash
+python check_and_fix_wifi.py
+```
+
+**Giải pháp thủ công:**
 1. Kiểm tra SSID và password trong `config.py`
 2. Đảm bảo mạng WiFi trong tầm phủ sóng
-3. Xóa profile WiFi cũ nếu cần:
+3. Bật Location Services (xem trên)
+4. Chạy với quyền Administrator
+5. Xóa và tạo lại profile WiFi:
    ```bash
    netsh wlan delete profile name="Tên_Mạng"
+   netsh wlan add profile filename="profile.xml"
    ```
 
 ### Lỗi Dependencies
